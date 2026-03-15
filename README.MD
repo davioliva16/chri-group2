@@ -1,3 +1,5 @@
+
+
 ## Project Overview
 
 This project consists of the development of a 2D top-down farming environment in which a user controls a tractor to interact with crops distributed across an agricultural field. The system will initially be tested using mouse input and later integrated with a real haptic device to provide force feedback during interaction. The environment will include crop rows, obstacles, and different terrain conditions. Haptic feedback will simulate physical properties of the environment such as resistance at field boundaries, interaction forces with crops or objects, and variations in terrain stiffness or damping. The objective is to create an interactive task that allows us to study how haptic feedback influences navigation, task performance, and user experience.
