@@ -1,0 +1,190 @@
+import pygame
+import random
+import math
+
+class Tractor: 
+    def __init__(self, x, y, image_path="tractor.png"):
+        # Position of the tracktor
+        self.x = x
+        self.y = y
+
+        # Image
+        self.image = pygame.image.load(image_path).convert_alpha()
+        scale = 0.5
+        original_w = self.image.get_width()
+        original_h = self.image.get_height()
+        new_size = (int(original_w * scale), int(original_h * scale))
+        self.image = pygame.transform.smoothscale(self.image, new_size)
+        
+        # Image rectangule -> for collisions
+        self.rect = self.image.get_rect(center=(x, y))
+    
+    # Update position of the tractor given mouse or haptic pos
+    def update_position(self, x, y):
+        self.x = x
+        self.y = y
+        self.rect = self.image.get_rect(center=(x,y))
+    
+    # For the collision with tomatoes to be more "truthfull"
+    #def get_collision_rect(self):
+    #    return self.rect.inflate(-80, -80) # Shape 
+    
+    def draw(self, screenVR):
+        screenVR.blit(self.image, self.rect) # Draw the iamge in the position of the rectangule
+
+
+class Tomato:
+    def __init__(self, x, y, tomato_type, row_id):
+        self.x = x
+        self.y = y
+
+        # Two tomatoes: ripe or unripe
+        self.tomato_type = tomato_type
+        self.collected = False
+        self.row_id = row_id
+
+        # Tomatoes properties
+        self.radius = 10
+        self.ripped = (220, 30, 30)
+        self.unripped = (30, 180, 30)
+
+        # (x, y, width, height)
+        self.rect = pygame.Rect(self.x - self.radius, self.y - self.radius, 2*self.radius, 2*self.radius)
+
+    # Updating tomatoes
+    def update_rect(self):
+        self.rect = pygame.Rect(self.x - self.radius, self.y - self.radius, 2 * self.radius, 2 * self.radius)
+
+
+    # Draw the tomatoes
+    def draw(self, screenVR):
+        if self.collected:
+            return
+        if self.tomato_type == "ripe":
+            color = self.ripped
+        else:
+            color = self.unripped
+        
+        pygame.draw.circle(screenVR, color, (self.x, self.y), self.radius)
+
+    # Check if a tomato has been taken
+    def check_collision_tomato_tractor(self, tractor):
+        return self.rect.colliderect(tractor.rect) # returns True when self.rect (tomato) is colliding with tractor.rect (tractor)
+
+class Game:
+    def __init__(self):
+        self.tractor = Tractor(300, 200, "tractor.png") # ScreenVR 600x400
+
+        self.reward = 0
+        self.penalty = 0
+
+        self.scroll_speed = 3.0 # 1.5
+
+        # Crops (x, y, width, height) - screenVR 600x400
+        self.field = pygame.Rect(50, 80, 500, 250) # draw in screenVR
+        self.crop1 = pygame.Rect(0, 110, 600, 60)
+        self.crop2 = pygame.Rect(0, 240, 600, 60)   
+        self.brown = (139, 69, 19)
+        
+        self.row1_center = self.crop1.centery
+        self.row2_center = self.crop2.centery
+
+        self.row1_phase = random.uniform(0, 2 * math.pi)
+        self.row2_phase = random.uniform(0, 2 * math.pi)
+                
+        self.tomatoes = self.generate_tomatoes()
+
+    # Update position of tractor given the input of the mouse or haptic device
+    def update_from_device(self, pos):
+        x = int(pos[0])
+        y = int(pos[1])
+
+        self.tractor.update_position(x, y)
+    
+    # Generate the trayectories of the tomatoes inside of the row
+    def get_row_y(self, x, row_id):
+        if row_id == 1:
+            base_y = self.row1_center
+            phase = self.row1_phase
+        else:
+            base_y = self.row2_center
+            phase = self.row2_phase
+
+        y = base_y + 12 * math.sin(0.02 * x + phase) + random.randint(-4, 4)
+        return int(y)
+
+
+    # Generate the tomatoes inside of the field (brown part)
+    def generate_tomatoes(self):
+        tomatoes = []
+
+        min_spacing = 80 # 70 and speed 2 too much
+
+        for row_id in [1, 2]:
+            last_x = 80
+            for _ in range(10):
+                x = last_x + random.randint(min_spacing, min_spacing + 60)
+                y = self.get_row_y(x, row_id)
+                tomato_type = random.choice(["ripe", "unripe"])
+                tomatoes.append(Tomato(x, y, tomato_type, row_id))
+                last_x = x  
+                     
+        return tomatoes
+    
+    # Check if a tomato has been taken
+    def check_tomatoes_interactions(self):
+        for tomato in self.tomatoes:
+            if tomato.collected:
+                continue
+            
+            # If the tomato collected is red is okay if not a penalty is introduced
+            if tomato.check_collision_tomato_tractor(self.tractor):
+                tomato.collected = True
+                if tomato.tomato_type == "ripe":
+                    self.reward += 1
+                else:
+                    self.penalty += 1
+    
+    
+    # Scrolling of the world
+    def scroll_world(self):
+        for tomato in self.tomatoes:
+            tomato.x -= self.scroll_speed
+
+            if tomato.x < -tomato.radius:
+                rightmost_x = max(t.x for t in self.tomatoes if t.row_id == tomato.row_id)
+                tomato.x = rightmost_x + random.randint(70, 130)
+                tomato.y = self.get_row_y(tomato.x, tomato.row_id)
+                tomato.tomato_type = random.choice(["ripe", "unripe"])
+                tomato.collected = False
+
+            tomato.update_rect()
+    
+     
+    # Draw the environment on the screenVR from graphics.py
+    def draw_world(self, screenVR):
+        # Field: 5 rows, 2 of them with tomatoes
+        screenVR.fill((80, 170, 80))
+
+        # Draw
+        pygame.draw.rect(screenVR, self.brown, self.crop1)
+        pygame.draw.rect(screenVR, self.brown, self.crop2)
+
+        # Draw the tractor
+        self.tractor.draw(screenVR)
+
+        # Draw the tomatoes
+        for tomato in self.tomatoes:
+            tomato.draw(screenVR)
+        
+        # Draw the score achieved
+        font = pygame.font.Font(None, 30)
+        score = self.reward - self.penalty
+        text = font.render(f"Reward: {self.reward}  Penalty: {self.penalty}  Score: {score}", True, (255, 255, 255))
+        screenVR.blit(text, (20, 20)) # Write the text
+    
+    # Update scrolling and tomatoes
+    def update(self):
+        self.scroll_world()
+        self.check_tomatoes_interactions()
+
