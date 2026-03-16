@@ -49,7 +49,7 @@ class PA:
             self.k = 0.01 #0.015 is unstable around corners, #0.02 becomes unstable almost everywhere
             self.b = 0.01 # effect was still not very perceptible on the physical device, before it became unstable  
         else:
-            self.k = 0.075
+            self.k = 0.001
             self.b = 0.1 #0.2 makes it unstable it
 
         self.xh_last_frame = np.array([0.0,0.0])

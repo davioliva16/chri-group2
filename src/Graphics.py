@@ -52,9 +52,12 @@ class Graphics:
         self.cYellow = (255,255,0)
         
         self.hhandle = pygame.image.load('handle.png') #
-        
-        self.haptic_width = 48
-        self.haptic_height = 48
+        HANDLE_SIZE = (100, 100)   # width, height — change to whatever you want
+
+        self.hhandle = pygame.transform.smoothscale(self.hhandle, HANDLE_SIZE)
+
+        self.haptic_width = 0
+        self.haptic_height = 0
         self.haptic  = pygame.Rect(*self.screenHaptics.get_rect().center, 0, 0).inflate(self.haptic_width, self.haptic_height)
         self.effort_cursor  = pygame.Rect(*self.haptic.center, 0, 0).inflate(self.haptic_width, self.haptic_height) 
         self.colorHaptic = self.cOrange ##color of the wall
@@ -186,8 +189,11 @@ class Graphics:
                 pygame.draw.circle(self.screenHaptics, (200, 200, 200),p, 6)
         
         ### Hand visualisation
-        self.screenHaptics.blit(self.hhandle,self.effort_cursor)
-        
+        offset = np.array([600,0])
+        handle_rect = self.hhandle.get_rect(center=self.effort_cursor.center)
+        self.screenVR.blit(self.hhandle, handle_rect)
+        ### Add handle to VR environment
+       
         #pygame.draw.line(self.screenHaptics, (0, 0, 0), (self.haptic.center),(self.haptic.center+2*k*(xm-xh)))
         
         ###################Render the VR surface###################
