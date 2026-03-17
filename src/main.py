@@ -14,7 +14,7 @@ class PA3():
         self.device_connected = self.physics.is_device_connected() #returns True if a connected haply device was found
         self.graphics = Graphics(self.device_connected) #setup class for drawing and graphics.
         self.game = Game()
-        self.fence = forces.fence_forces(self.graphics)
+        self.fence = forces.fence_forces()
         #  - Pass along if a device is connected so that the graphics class knows if it needs to simulate the pantograph
         ##############################################
         #ADD things here that you want to run at the start of the program!
@@ -49,9 +49,13 @@ class PA3():
 
         f_tomatoes = forces.get_all_tomato_forces(game.tomatoes, xh, strength=0.1, sigma=50)
         
-        f_collision, inCollision, proxyPosition = ff.god_object(xh=xh, fences=game.fences, kc=0.1)
+        f_collision, inCollision, proxyPosition = ff.handle_fences(
+            tractor_rect=game.tractor.rect, 
+            fences=game.fences, 
+            kc=0.1
+        )
 
-        fe = f_tomatoes + f_damp 
+        fe = f_tomatoes + f_damp + f_collision
 
         #Update last values
         if inCollision:
@@ -79,7 +83,10 @@ class PA3():
             pA0,pB0,pA,pB,pE = p.derive_device_pos(pos_phys) #derive the pantograph joint positions given some endpoint position
             pA0,pB0,pA,pB,xh = g.convert_pos(pA0,pB0,pA,pB,pE) #convert the physical positions to screen coordinates
 
-        self.game.update_from_device(xh)
+        if inCollision:
+            self.game.update_from_device(proxyPosition)
+        else:
+            self.game.update_from_device(xh)
 
         self.update_game()
 

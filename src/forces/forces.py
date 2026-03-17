@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from prometheus_client import Enum
 import pygame
 from Graphics import Graphics
 def get_gaussian_attraction(pos, center, strength, sigma, repel=False):
@@ -46,62 +47,97 @@ def get_damping_force(xh, xh_last_frame, damping_coefficient):
     velocity = xh - xh_last_frame
     return -damping_coefficient * velocity
 
+class CollisionLocation(Enum):
+    NONE = 0
+    TOP = 1
+    BOTTOM = 2
+    LEFT = 3
+    RIGHT = 4
+
+class CollisionStatus(Enum):
+    FREE_SPACE = 0
+    COLLISION = 1
+    UNHANDLED_FREE_SPACE = 2
+    UNHANDLED_COLLISION = 3
+
 class fence_forces():
-    def __init__(self,graphics):
-        self.g = graphics
-        self.unhandledFreeSpace = False
-        self.unhandledCollision = False
-        self.sideCollision = False
+    def __init__(self):
         
-    def god_object(self,xh, fences, kc):
-    
-        tractor_rect = self.g.haptic  # your haptic proxy rectangle
-    
+        self.collisionStatus = CollisionStatus.FREE_SPACE
+        self.collisionLocation = CollisionLocation.NONE
+        
+    def handle_fences(self, tractor_rect:pygame.Rect, fences, kc):
+
+        #update proxy position to current position (no forces)
+        tractorPosition = np.array([tractor_rect.centerx, tractor_rect.centery])
+        proxyPosition = np.array([tractor_rect.centerx, tractor_rect.centery])
+
         # Find all fences that collide with the haptic object
         colliding_fences = [f for f in fences if tractor_rect.colliderect(f)]
+
+        if len(colliding_fences)>1:
+            print("""
+                Multiple collisions detected! This probably should not happen, 
+                but if it does, the code will just pick the first fence for 
+                collision response."""
+                )
     
-        if not colliding_fences:
-            # No collision → reset state
-            if self.unhandledFreeSpace:
-                
-                self.unhandledFreeSpace = False
-    
-            self.unhandledCollision = True
-            return np.array([0.0, 0.0]), False
-            proxyPosition = xh
-    
-        # Pick the closest fence (important when two overlap visually)
-        fence = min(colliding_fences, key=lambda f: abs(f.x - xh[0]))
-    
-        # --- COLLISION HANDLING ---
-        if self.unhandledCollision:
-            # Determine if collision is horizontal or vertical
-            dx = abs((xh[0] + 24) - fence.left)
-            dy = abs((xh[1] + 24) - fence.top)
-    
-            self.sideCollision = dx < dy  # True = left/right collision
+        if self.collisionStatus == CollisionStatus.FREE_SPACE:
+
+            #Check for collision and set unhandled collision state
+            if colliding_fences:
+                self.collisionStatus = CollisionStatus.UNHANDLED_COLLISION
+
+        elif self.collisionStatus == CollisionStatus.UNHANDLED_COLLISION:
             
-    
-            self.unhandledCollision = False
-    
-        # Compute proxy position
-        if self.sideCollision:
-            proxyPosition = np.array([fence.left - 24, xh[1]])
-        else:
-            proxyPosition = np.array([xh[0], fence.top - 24])
-    
-        # Draw proxy rectangle (visual debugging)
-        proxyRectangle = pygame.Rect(
-            proxyPosition[0] - 24,
-            proxyPosition[1] - 24,
-            48,
-            48
-        )
-        pygame.draw.rect(self.g.screenVR, self.g.cRed, proxyRectangle)
+            if not colliding_fences:
+                self.collisionStatus = CollisionStatus.UNHANDLED_FREE_SPACE
+            else:
+                fence = colliding_fences[0]
+                #Determine collision location
+                dTop = (abs((tractor_rect.top) - fence.bottom))
+                dBottom = (abs((tractor_rect.bottom) - fence.top))
+                dLeft = (abs((tractor_rect.left) - fence.right))
+                dRight = (abs((tractor_rect.right) - fence.left))
+
+                distance = [dTop, dBottom, dLeft, dRight]
+
+                self.collisionLocation = distance.index(min(distance)) + 1 #1 because enum starts at 1
+                self.collisionStatus = CollisionStatus.COLLISION
+
+        
+        elif self.collisionStatus == CollisionStatus.COLLISION:
+            #Check if we have exited collision and set unhandled free space state
+
+            if not colliding_fences:
+                self.collisionStatus = CollisionStatus.UNHANDLED_FREE_SPACE
+            else:
+                fence = colliding_fences[0]
+
+                if self.collisionLocation == CollisionLocation.TOP:
+                    proxyPosition = np.array([tractor_rect.centerx, fence.top + tractor_rect.height/2])
+
+                elif self.collisionLocation == CollisionLocation.BOTTOM:
+                    proxyPosition = np.array([tractor_rect.centerx, fence.bottom - tractor_rect.height/2])
+
+                elif self.collisionLocation == CollisionLocation.LEFT:
+                    proxyPosition = np.array([fence.left + tractor_rect.width/2, tractor_rect.centery])
+                    
+                elif self.collisionLocation == CollisionLocation.RIGHT:
+                    proxyPosition = np.array([fence.right - tractor_rect.width/2, tractor_rect.centery])
+
+           
+        elif self.collisionStatus == CollisionStatus.UNHANDLED_FREE_SPACE:
+            self.collisionLocation = CollisionLocation.NONE
+            self.collisionStatus = CollisionStatus.FREE_SPACE
+
+        inCollision = self.collisionStatus == CollisionStatus.COLLISION
     
         # Compute collision force
-        distance_from_proxy = proxyPosition - xh
-        f_collision = -kc * distance_from_proxy
-    
-        self.unhandledFreeSpace = True
-        return f_collision, colliding_fences, proxyPosition
+        if inCollision:
+            distance_from_proxy = (proxyPosition - tractorPosition)
+            f_collision = -kc*distance_from_proxy
+        else:
+            f_collision = np.array([0.0, 0.0])
+        
+        return f_collision, inCollision, proxyPosition

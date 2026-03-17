@@ -179,7 +179,8 @@ class Game:
         
         #Draw the fences
         for fence in self.fences:
-            screenVR.blit(self.fence_image, fence)
+            pygame.draw.rect(screenVR, (220, 30, 30), fence)
+            #screenVR.blit(self.fence_image, fence)
 
         # Draw the tractor
         self.tractor.draw(screenVR)
