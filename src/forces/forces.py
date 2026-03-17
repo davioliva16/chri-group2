@@ -1,6 +1,7 @@
 import numpy as np
 import math
 
+
 def get_gaussian_attraction(pos, center, strength, sigma, repel=False):
     """
     Calculates an attractive force towards a center point using a Gaussian falloff.
@@ -29,15 +30,20 @@ def get_gaussian_attraction(pos, center, strength, sigma, repel=False):
     force = strength * falloff * direction_vec
     return force
 
-def get_all_tomato_forces(tomatoes, xh, strength, sigma):
+def get_all_tomato_forces(tomatoes, xh, strength, sigma, repel_rotten=False):
     """Calculate the total force on the haptic device from all tomatoes."""
     total_force = np.array([0.0, 0.0])
     for tomato in tomatoes:
         if not tomato.collected:
-            force = get_gaussian_attraction(xh, (tomato.x, tomato.y), strength=strength, sigma=sigma)
+
+            repel = (tomato.tomato_type == "rotten") and repel_rotten
+
+            force = get_gaussian_attraction(xh, (tomato.x, tomato.y), strength=strength, sigma=sigma, repel=repel)
 
             total_force += force  # Attractive force
 
+        #TODO consider adding force decay based on how long the tomato has been collected
+        
     return total_force
 
 def get_damping_force(xh, xh_last_frame, damping_coefficient):

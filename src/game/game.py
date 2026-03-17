@@ -18,6 +18,7 @@ class Tractor:
         
         # Image rectangule -> for collisions
         self.rect = self.image.get_rect(center=(x, y))
+        self.radius = self.image.get_width() / 2
     
     # Update position of the tractor given mouse or haptic pos
     def update_position(self, x, y):
@@ -38,38 +39,48 @@ class Tomato:
         self.x = x
         self.y = y
 
-        # Two tomatoes: ripe or unripe
+        self.hitbox_scaling = 0.5 # To make the hitbox smaller than the image
+
+        # Two tomatoes: ripe or rotten
         self.tomato_type = tomato_type
         self.collected = False
         self.row_id = row_id
 
         # Tomatoes properties
-        self.radius = 10
         self.ripped = (220, 30, 30)
-        self.unripped = (30, 180, 30)
+        self.rotten = (30, 180, 30)
 
-        # (x, y, width, height)
-        self.rect = pygame.Rect(self.x - self.radius, self.y - self.radius, 2*self.radius, 2*self.radius)
+        if self.tomato_type == "ripe":
+            image_path = "assets/tomato.png"
+        else:
+            image_path = "assets/rotten_tomato.png"
 
-    # Updating tomatoes
-    def update_rect(self):
-        self.rect = pygame.Rect(self.x - self.radius, self.y - self.radius, 2 * self.radius, 2 * self.radius)
+        image = pygame.image.load(image_path).convert_alpha()
+        scale = 0.1
+        original_w = image.get_width()
+        original_h = image.get_height()
+        new_size = (int(original_w * scale), int(original_h * scale))
+        self.image = pygame.transform.smoothscale(image, new_size)
 
+        # Image rect centered at (x, y)
+        self.rect = self.image.get_rect(center=(self.x, self.y))
+        self.radius = self.hitbox_scaling * self.image.get_width() / 2
 
     # Draw the tomatoes
     def draw(self, screenVR):
         if self.collected:
             return
-        if self.tomato_type == "ripe":
-            color = self.ripped
-        else:
-            color = self.unripped
-        
-        pygame.draw.circle(screenVR, color, (self.x, self.y), self.radius)
 
-    # Check if a tomato has been taken
+        screenVR.blit(self.image, self.rect)
+
+    # Check if a tomato has been taken using circle-based collision
     def check_collision_tomato_tractor(self, tractor):
-        return self.rect.colliderect(tractor.rect) # returns True when self.rect (tomato) is colliding with tractor.rect (tractor)
+        # Calculate distance between centers
+        dx = self.x - tractor.x
+        dy = self.y - tractor.y
+        distance = math.sqrt(dx**2 + dy**2)
+        # Collision if distance is less than sum of radii
+        return distance < (self.radius + tractor.radius)
 
 class Game:
     def __init__(self):
@@ -125,7 +136,7 @@ class Game:
             for _ in range(10):
                 x = last_x + random.randint(min_spacing, min_spacing + 100)
                 y = self.get_row_y(x, row_id)
-                tomato_type = random.choice(["ripe", "unripe"])
+                tomato_type = random.choice(["ripe", "rotten"])
                 tomatoes.append(Tomato(x, y, tomato_type, row_id))
                 last_x = x  
                      
@@ -155,10 +166,10 @@ class Game:
                 rightmost_x = max(t.x for t in self.tomatoes if t.row_id == tomato.row_id)
                 tomato.x = rightmost_x + random.randint(70, 130)
                 tomato.y = self.get_row_y(tomato.x, tomato.row_id)
-                tomato.tomato_type = random.choice(["ripe", "unripe"])
+                tomato.tomato_type = random.choice(["ripe", "rotten"])
                 tomato.collected = False
 
-            tomato.update_rect()
+            tomato.rect.center = (tomato.x, tomato.y)
     
      
     # Draw the environment on the screenVR from graphics.py

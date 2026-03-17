@@ -2,7 +2,7 @@ import math
 import pygame
 from game.settings import (
     TRACTOR_RADIUS, CROP_RADIUS,
-    TRACTOR_COLOR, RIPE_COLOR, UNRIPE_COLOR,
+    TRACTOR_COLOR, RIPE_COLOR, ROTTEN_COLOR,
     OBSTACLE_COLOR, BLACK
 )
 
@@ -63,7 +63,7 @@ class Crop:
     def draw(self, surface):
         if self.collected:
             return
-        color = RIPE_COLOR if self.crop_type == "ripe" else UNRIPE_COLOR
+        color = RIPE_COLOR if self.crop_type == "ripe" else ROTTEN_COLOR
         pygame.draw.circle(surface, color, (int(self.x), int(self.y)), self.radius)
         pygame.draw.circle(surface, BLACK, (int(self.x), int(self.y)), self.radius, 2)
 
