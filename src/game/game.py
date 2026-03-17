@@ -93,6 +93,7 @@ class Game:
         self.row2_phase = random.uniform(0, 2 * math.pi)
                 
         self.tomatoes = self.generate_tomatoes()
+        self.fences = self.generate_fences()
 
     # Update position of tractor given the input of the mouse or haptic device
     def update_from_device(self, pos):
@@ -160,7 +161,13 @@ class Game:
 
             tomato.update_rect()
     
-     
+        for fence in self.fences:
+            fence.x -= self.scroll_speed
+        
+            if fence.right < 0:
+                rightmost = max(f.right for f in self.fences)
+                fence.x = rightmost + random.randint(50, 200)
+                
     # Draw the environment on the screenVR from graphics.py
     def draw_world(self, screenVR):
         # Field: 5 rows, 2 of them with tomatoes
@@ -169,6 +176,10 @@ class Game:
         # Draw
         pygame.draw.rect(screenVR, self.brown, self.crop1)
         pygame.draw.rect(screenVR, self.brown, self.crop2)
+        
+        #Draw the fences
+        for fence in self.fences:
+            screenVR.blit(self.fence_image, fence)
 
         # Draw the tractor
         self.tractor.draw(screenVR)
@@ -188,3 +199,42 @@ class Game:
         self.scroll_world()
         self.check_tomatoes_interactions()
 
+    # Draw fences
+    def generate_fences(self):
+        fences = []
+    
+        # Load fence image
+        fence_img = pygame.image.load("assets/fence.png").convert_alpha()
+    
+        # Optional scaling
+        scale = 0.25
+        fw = int(fence_img.get_width() * scale)
+        fh = int(fence_img.get_height() * scale)
+        fence_img = pygame.transform.smoothscale(fence_img, (fw, fh))
+    
+        # Store for drawing
+        self.fence_image = fence_img
+        self.fence_w = fw
+        self.fence_h = fh
+    
+        # Fence vertical position (between crop1 and crop2)
+        fence_y = (self.crop1.bottom + self.crop2.top) // 2
+        
+        # Horizontal limits of the environment
+        left_limit = self.field.left
+        right_limit = self.field.right
+
+
+        # Generate scrolling fence segments
+        x = left_limit
+
+        while x + fw <= right_limit:
+            if random.random() < 0.9:
+                fences.append(pygame.Rect(x, fence_y - fh // 2, fw, fh))
+                x += fw
+            else:
+                x +=20
+
+
+    
+        return fences

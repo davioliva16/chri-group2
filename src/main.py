@@ -14,6 +14,7 @@ class PA3():
         self.device_connected = self.physics.is_device_connected() #returns True if a connected haply device was found
         self.graphics = Graphics(self.device_connected) #setup class for drawing and graphics.
         self.game = Game()
+        self.fence = forces.fence_forces(self.graphics)
         #  - Pass along if a device is connected so that the graphics class knows if it needs to simulate the pantograph
         ##############################################
         #ADD things here that you want to run at the start of the program!
@@ -31,6 +32,7 @@ class PA3():
         p = self.physics
         g = self.graphics
         game = self.game
+        ff = self.fence
         keyups,xm = g.get_events()
 
         if self.device_connected:
@@ -46,11 +48,16 @@ class PA3():
         f_damp = forces.get_damping_force(xh, self.xh_last_frame, damping_coefficient=0.1)
 
         f_tomatoes = forces.get_all_tomato_forces(game.tomatoes, xh, strength=0.1, sigma=50)
+        
+        f_collision, inCollision, proxyPosition = ff.god_object(xh=xh, fences=game.fences, kc=0.1)
 
-        fe = f_tomatoes + f_damp
+        fe = f_tomatoes + f_damp 
 
         #Update last values
-        self.xh_last_frame = xh
+        if inCollision:
+            self.xh_last_frame = proxyPosition
+        else:
+            self.xh_last_frame = xh
 
         # Keyups
         for key in keyups:
