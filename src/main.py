@@ -6,6 +6,7 @@ from Physics import Physics
 from game.game import Game
 import forces.forces as forces
 import sys
+import game.settings as Settings
 
 
 class PA3():
@@ -41,13 +42,19 @@ class PA3():
         else:
             xh = np.array(g.haptic.center)
 
-        f = np.array([0.0, 0.0])
+
         g.erase_screen()
-        xc,yc = g.screenVR.get_rect().center
 
         f_damp = forces.get_damping_force(xh, self.xh_last_frame, damping_coefficient=0.1)
 
-        f_tomatoes = forces.get_all_tomato_forces(game.tomatoes, xh, strength=0.1, sigma=50)
+        if Settings.TOMATO_ATTRACTION:
+            f_tomatoes = forces.get_all_tomato_forces(
+                game.tomatoes, xh, strength=0.1, 
+                sigma=50, 
+                repel_rotten=Settings.ROTTEN_TOMATO_REPULSION
+            )
+        else:
+            f_tomatoes = np.array([0.0, 0.0])
         
         f_collision, verticalCollision, horizontalCollision, proxyPosition = ff.handle_fences(
             tractor_rect=game.tractor.rect,
@@ -103,7 +110,6 @@ class PA3():
     def close(self):
         ##############################################
         #ADD things here that you want to run right before the program ends!
-        
         ##############################################
         self.graphics.close()
         self.physics.close()

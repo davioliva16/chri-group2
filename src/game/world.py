@@ -55,7 +55,7 @@ class World:
         crops = []
         for row_y in self.row_centers:
             for i, y in enumerate(range(150, 950, 70)):
-                crop_type = "ripe" if i % 2 == 0 else "unripe"
+                crop_type = "ripe" if i % 2 == 0 else "rotten"
                 crops.append(Crop(row_y, y, crop_type))
         return crops
 
@@ -71,7 +71,7 @@ class World:
             if crop.x < self.field_rect.left - crop.radius:
                 crop.x = self.field_rect.right + random.randint(20, 120)
                 crop.collected = False
-                crop.crop_type = random.choice(["ripe", "unripe"])
+                crop.crop_type = random.choice(["ripe", "rotten"])
 
         for obstacle in self.obstacles:
             obstacle.rect.x -= self.scroll_speed
