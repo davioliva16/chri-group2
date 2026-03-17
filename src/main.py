@@ -14,6 +14,7 @@ class PA3():
         self.device_connected = self.physics.is_device_connected() #returns True if a connected haply device was found
         self.graphics = Graphics(self.device_connected) #setup class for drawing and graphics.
         self.game = Game()
+        self.fence = forces.fence_forces()
         #  - Pass along if a device is connected so that the graphics class knows if it needs to simulate the pantograph
         ##############################################
         #ADD things here that you want to run at the start of the program!
@@ -31,6 +32,7 @@ class PA3():
         p = self.physics
         g = self.graphics
         game = self.game
+        ff = self.fence
         keyups,xm = g.get_events()
 
         if self.device_connected:
@@ -46,8 +48,15 @@ class PA3():
         f_damp = forces.get_damping_force(xh, self.xh_last_frame, damping_coefficient=0.1)
 
         f_tomatoes = forces.get_all_tomato_forces(game.tomatoes, xh, strength=0.1, sigma=50)
+        
+        f_collision, verticalCollision, horizontalCollision, proxyPosition = ff.handle_fences(
+            tractor_rect=game.tractor.rect,
+            xh=xh,
+            fences=game.fences, 
+            kc=0.1
+        )
 
-        fe = f_tomatoes + f_damp
+        fe = f_damp + f_collision + f_tomatoes
 
         #Update last values
         self.xh_last_frame = xh
@@ -72,8 +81,16 @@ class PA3():
             pA0,pB0,pA,pB,pE = p.derive_device_pos(pos_phys) #derive the pantograph joint positions given some endpoint position
             pA0,pB0,pA,pB,xh = g.convert_pos(pA0,pB0,pA,pB,pE) #convert the physical positions to screen coordinates
 
-        self.game.update_from_device(xh)
 
+        
+        if verticalCollision:
+            self.game.update_tractor_pos_from_device(pos=xh, pos_virtual=np.array([xh[0], proxyPosition[1]]))
+        elif horizontalCollision:
+            self.game.update_tractor_pos_from_device(pos=xh, pos_virtual=np.array([proxyPosition[0], xh[1]]))
+        else:
+            self.game.update_tractor_pos_from_device(pos = xh)
+        
+        
         self.update_game()
 
         g.render(pA0,pB0,pA,pB,xh,fe,xm)

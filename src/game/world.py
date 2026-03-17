@@ -26,7 +26,27 @@ class World:
         self.obstacles = [
             Obstacle(430, 240, 50, 50),
             Obstacle(720, 430, 70, 40),
+        
         ]
+
+        #fence_image = "assets/fence.png"
+
+        # # Load once to get width/height
+        # temp_img = pygame.image.load(fence_image).convert_alpha()
+        # fence_w = temp_img.get_width()
+        # fence_h = temp_img.get_height()
+        
+        # fence_y = (self.row_centers[0] + self.row_centers[1]) // 2
+        
+        # x = 200
+        # while x < 1400:
+        #     if random.random() < 0.7:  # 70% chance to place a fence
+        #         self.obstacles.append(
+        #             Obstacle(x, fence_y - fence_h // 2, image_path=fence_image)
+        #         )
+        #         x += fence_w
+        #     else:
+        #         x += 200  # gap size
 
         self.score = 0
         self.penalty = 0
