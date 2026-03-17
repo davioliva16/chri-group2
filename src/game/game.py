@@ -99,16 +99,12 @@ class Tomato:
 
     # Check if a tomato has been taken using circle-based collision
     def check_collision_tomato_tractor(self, tractor):
-<<<<<<< HEAD
         # Calculate distance between centers
         dx = self.x - tractor.x
         dy = self.y - tractor.y
         distance = math.sqrt(dx**2 + dy**2)
         # Collision if distance is less than sum of radii
         return distance < (self.radius + tractor.radius)
-=======
-        return self.rect.colliderect(tractor.virtual_rect) # returns True when self.rect (tomato) is colliding with tractor.virtual_rect
->>>>>>> main
 
 class Game:
     def __init__(self):

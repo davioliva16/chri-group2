@@ -2,7 +2,6 @@ import numpy as np
 import math
 from enum import Enum
 import pygame
-from Graphics import Graphics
 
 def get_gaussian_attraction(pos, center, strength, sigma, repel=False):
     """
@@ -89,7 +88,7 @@ class fence_forces():
                 )
     
         if self.collisionStatus == CollisionStatus.FREE_SPACE:
-
+            print("in freespace!")
             self.proxyPosition = tractorPosition
 
             #Check for collision and set unhandled collision state
@@ -98,7 +97,7 @@ class fence_forces():
                 self.collisionStatus = CollisionStatus.UNHANDLED_COLLISION
 
         elif self.collisionStatus == CollisionStatus.UNHANDLED_COLLISION:
-
+            print("in unhandled collision!")
             self.proxyPosition = tractorPosition
             
             if not colliding_fences:
@@ -116,13 +115,13 @@ class fence_forces():
 
                 self.lastFenceInfo = colliding_fences[0]
 
-                self.collisionLocation = distance.index(min(distance)) + 1 #1 because enum starts at 1
+                self.collisionLocation = CollisionLocation(distance.index(min(distance)) + 1) #1 because enum starts at 1
                 self.collisionStatus = CollisionStatus.COLLISION
 
         
         elif self.collisionStatus == CollisionStatus.COLLISION:
             #Check if we have exited collision and set unhandled free space state
-
+            print("in collision!")
             if not colliding_fences:
                 fence = self.lastFenceInfo
             else:
@@ -157,6 +156,7 @@ class fence_forces():
                     self.collisionStatus = CollisionStatus.UNHANDLED_FREE_SPACE
                     
         elif self.collisionStatus == CollisionStatus.UNHANDLED_FREE_SPACE:
+            print("in unhandled free space!")
             self.proxyPosition = tractorPosition
             self.collisionLocation = CollisionLocation.NONE
             self.collisionStatus = CollisionStatus.FREE_SPACE
