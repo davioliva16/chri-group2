@@ -6,6 +6,8 @@ from Physics import Physics
 from game.game import Game
 import forces.forces as forces
 import sys
+from PIL import Image
+
 
 
 class PA3():
@@ -14,6 +16,7 @@ class PA3():
         self.device_connected = self.physics.is_device_connected() #returns True if a connected haply device was found
         self.graphics = Graphics(self.device_connected) #setup class for drawing and graphics.
         self.game = Game()
+        self.game_over = "assets/yourfired.png"
         #  - Pass along if a device is connected so that the graphics class knows if it needs to simulate the pantograph
         ##############################################
         #ADD things here that you want to run at the start of the program!
@@ -51,7 +54,16 @@ class PA3():
 
         #Update last values
         self.xh_last_frame = xh
+        
+        if game.time_left == 0:
+           path = self.game_over
+           img = Image.open(path)
+           img.show()
 
+           pygame.quit()
+           sys.exit(0)
+
+            
         # Keyups
         for key in keyups:
             if key==ord("q"): #q for quit, ord() gets the unicode of the given character
