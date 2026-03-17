@@ -2,11 +2,16 @@ import pygame
 import random
 import math
 
+from game.settings import DEBUG_RENDER
+
 class Tractor: 
     def __init__(self, x, y, image_path="assets/tractor.png"):
         # Position of the tracktor
         self.x = x
         self.y = y
+
+        self.virtual_x = x
+        self.virtual_y = y
 
         # Image
         self.image = pygame.image.load(image_path).convert_alpha()
@@ -16,22 +21,41 @@ class Tractor:
         new_size = (int(original_w * scale), int(original_h * scale))
         self.image = pygame.transform.smoothscale(self.image, new_size)
         
-        # Image rectangule -> for collisions
-        self.rect = self.image.get_rect(center=(x, y))
+        # Rect rectangule -> for collisions
+        self.rect = pygame.Rect(
+            self.x - self.image.get_width() // 2,
+            self.y - self.image.get_height() // 2,
+            self.image.get_width(),
+            self.image.get_height()
+        )
+        # For tomato collision, we will use a circle-based collision
         self.radius = self.image.get_width() / 2
+
+        # Image rectangule -> for rendering
+        self.virtual_rect = self.image.get_rect(center=(self.virtual_x, self.virtual_y))
     
     # Update position of the tractor given mouse or haptic pos
     def update_position(self, x, y):
         self.x = x
         self.y = y
-        self.rect = self.image.get_rect(center=(x,y))
-    
-    # For the collision with tomatoes to be more "truthfull"
-    #def get_collision_rect(self):
-    #    return self.rect.inflate(-80, -80) # Shape 
+
+        self.rect = pygame.Rect(
+            self.x - self.image.get_width() // 2,
+            self.y - self.image.get_height() // 2,
+            self.image.get_width(),
+            self.image.get_height()
+        )
+
+    def update_virtual_position(self, x, y):
+        self.virtual_x = x
+        self.virtual_y = y
+
+        self.virtual_rect = self.image.get_rect(center=(self.virtual_x, self.virtual_y))
     
     def draw(self, screenVR):
-        screenVR.blit(self.image, self.rect) # Draw the iamge in the position of the rectangule
+        if DEBUG_RENDER:
+            pygame.draw.rect(screenVR, (0, 220, 30), self.rect) # Draw the collision rect (for debugging)
+        screenVR.blit(self.image, self.virtual_rect) # Draw the iamge in the position of the virtual rectangle
 
 
 class Tomato:
@@ -75,12 +99,16 @@ class Tomato:
 
     # Check if a tomato has been taken using circle-based collision
     def check_collision_tomato_tractor(self, tractor):
+<<<<<<< HEAD
         # Calculate distance between centers
         dx = self.x - tractor.x
         dy = self.y - tractor.y
         distance = math.sqrt(dx**2 + dy**2)
         # Collision if distance is less than sum of radii
         return distance < (self.radius + tractor.radius)
+=======
+        return self.rect.colliderect(tractor.virtual_rect) # returns True when self.rect (tomato) is colliding with tractor.virtual_rect
+>>>>>>> main
 
 class Game:
     def __init__(self):
@@ -104,13 +132,22 @@ class Game:
         self.row2_phase = random.uniform(0, 2 * math.pi)
                 
         self.tomatoes = self.generate_tomatoes()
+        self.fences = self.generate_fences()
 
     # Update position of tractor given the input of the mouse or haptic device
-    def update_from_device(self, pos):
+    def update_tractor_pos_from_device(self, pos, pos_virtual=None):
         x = int(pos[0])
         y = int(pos[1])
 
+        if pos_virtual is not None:
+            x_virtual = int(pos_virtual[0])
+            y_virtual = int(pos_virtual[1])
+        else:
+            x_virtual = x
+            y_virtual = y
+
         self.tractor.update_position(x, y)
+        self.tractor.update_virtual_position(x_virtual, y_virtual)
     
     # Generate the trayectories of the tomatoes inside of the row
     def get_row_y(self, x, row_id):
@@ -171,7 +208,14 @@ class Game:
 
             tomato.rect.center = (tomato.x, tomato.y)
     
-     
+        for fence in self.fences:
+              
+            fence.x -= self.scroll_speed
+
+            if fence.right < 0:
+                rightmost = max(f.right for f in self.fences)
+                fence.x = rightmost + random.randint(50, 200)
+                
     # Draw the environment on the screenVR from graphics.py
     def draw_world(self, screenVR):
         # Field: 5 rows, 2 of them with tomatoes
@@ -180,6 +224,13 @@ class Game:
         # Draw
         pygame.draw.rect(screenVR, self.brown, self.crop1)
         pygame.draw.rect(screenVR, self.brown, self.crop2)
+        
+        #Draw the fences
+        for fence in self.fences:
+            if DEBUG_RENDER:
+                pygame.draw.rect(screenVR, (220, 30, 30), fence)
+            
+            screenVR.blit(self.fence_image, fence)
 
         # Draw the tractor
         self.tractor.draw(screenVR)
@@ -199,3 +250,42 @@ class Game:
         self.scroll_world()
         self.check_tomatoes_interactions()
 
+    # Draw fences
+    def generate_fences(self):
+        fences = []
+    
+        # Load fence image
+        fence_img = pygame.image.load("assets/fence.png").convert_alpha()
+    
+        # Optional scaling
+        scale = 0.25
+        fw = int(fence_img.get_width() * scale)
+        fh = int(fence_img.get_height() * scale)
+        fence_img = pygame.transform.smoothscale(fence_img, (fw, fh))
+    
+        # Store for drawing
+        self.fence_image = fence_img
+        self.fence_w = fw
+        self.fence_h = fh
+    
+        # Fence vertical position (between crop1 and crop2)
+        fence_y = (self.crop1.bottom + self.crop2.top) // 2
+        
+        # Horizontal limits of the environment
+        left_limit = self.field.left
+        right_limit = self.field.right
+
+
+        # Generate scrolling fence segments
+        x = left_limit
+
+        while x + fw <= right_limit:
+            if random.random() < 0.9:
+                fences.append(pygame.Rect(x, fence_y - fh // 2, fw, fh))
+                x += fw
+            else:
+                x +=20
+
+
+    
+        return fences

@@ -69,9 +69,19 @@ class Crop:
 
 
 class Obstacle:
-    def __init__(self, x, y, w, h):
-        self.rect = pygame.Rect(x, y, w, h)
+    def __init__(self, x, y, w=None, h=None, image_path=None):
+        if image_path:
+            self.image = pygame.image.load(image_path).convert_alpha()
+            self.rect = self.image.get_rect(topleft=(x, y))
+            self.is_image = True
+        else:
+            self.rect = pygame.Rect(x, y, w, h)
+            self.image = None
+            self.is_image = False
 
     def draw(self, surface):
-        pygame.draw.rect(surface, OBSTACLE_COLOR, self.rect)
-        pygame.draw.rect(surface, BLACK, self.rect, 2)
+        if self.is_image:
+            surface.blit(self.image, self.rect)
+        else:
+            pygame.draw.rect(surface, OBSTACLE_COLOR, self.rect)
+            pygame.draw.rect(surface, BLACK, self.rect, 2)
