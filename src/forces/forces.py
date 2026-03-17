@@ -62,15 +62,15 @@ class CollisionStatus(Enum):
 
 class fence_forces():
     def __init__(self):
-        
         self.collisionStatus = CollisionStatus.FREE_SPACE
         self.collisionLocation = CollisionLocation.NONE
+        self.proxyPosition = np.array([0.0, 0.0])
+        self.lastFenceInfo = None
         
-    def handle_fences(self, tractor_rect:pygame.Rect, fences, kc):
+    def handle_fences(self, tractor_rect:pygame.Rect, xh, fences, kc):
 
         #update proxy position to current position (no forces)
         tractorPosition = np.array([tractor_rect.centerx, tractor_rect.centery])
-        proxyPosition = np.array([tractor_rect.centerx, tractor_rect.centery])
 
         # Find all fences that collide with the haptic object
         colliding_fences = [f for f in fences if tractor_rect.colliderect(f)]
@@ -84,23 +84,31 @@ class fence_forces():
     
         if self.collisionStatus == CollisionStatus.FREE_SPACE:
 
+            self.proxyPosition = tractorPosition
+
             #Check for collision and set unhandled collision state
             if colliding_fences:
+                self.lastFenceInfo = colliding_fences[0]
                 self.collisionStatus = CollisionStatus.UNHANDLED_COLLISION
 
         elif self.collisionStatus == CollisionStatus.UNHANDLED_COLLISION:
+
+            self.proxyPosition = tractorPosition
             
             if not colliding_fences:
                 self.collisionStatus = CollisionStatus.UNHANDLED_FREE_SPACE
             else:
                 fence = colliding_fences[0]
                 #Determine collision location
-                dTop = (abs((tractor_rect.top) - fence.bottom))
-                dBottom = (abs((tractor_rect.bottom) - fence.top))
-                dLeft = (abs((tractor_rect.left) - fence.right))
-                dRight = (abs((tractor_rect.right) - fence.left))
+  
+                dTop = (abs((tractor_rect.bottom) - fence.top))
+                dBottom = (abs((tractor_rect.top) - fence.bottom))
+                dLeft = (abs((tractor_rect.right) - fence.left))
+                dRight = (abs((tractor_rect.left) - fence.right))
 
                 distance = [dTop, dBottom, dLeft, dRight]
+
+                self.lastFenceInfo = colliding_fences[0]
 
                 self.collisionLocation = distance.index(min(distance)) + 1 #1 because enum starts at 1
                 self.collisionStatus = CollisionStatus.COLLISION
@@ -110,34 +118,51 @@ class fence_forces():
             #Check if we have exited collision and set unhandled free space state
 
             if not colliding_fences:
-                self.collisionStatus = CollisionStatus.UNHANDLED_FREE_SPACE
+                fence = self.lastFenceInfo
             else:
                 fence = colliding_fences[0]
 
-                if self.collisionLocation == CollisionLocation.TOP:
-                    proxyPosition = np.array([tractor_rect.centerx, fence.top + tractor_rect.height/2])
+            if self.collisionLocation == CollisionLocation.TOP:
 
-                elif self.collisionLocation == CollisionLocation.BOTTOM:
-                    proxyPosition = np.array([tractor_rect.centerx, fence.bottom - tractor_rect.height/2])
+                self.proxyPosition = np.array([tractor_rect.centerx, fence.top - tractor_rect.height/2])
+                
+                if tractor_rect.centerx < fence.left or tractor_rect.centerx > fence.right or tractor_rect.bottom < fence.top:
+                    self.collisionStatus = CollisionStatus.UNHANDLED_FREE_SPACE
 
-                elif self.collisionLocation == CollisionLocation.LEFT:
-                    proxyPosition = np.array([fence.left + tractor_rect.width/2, tractor_rect.centery])
+            elif self.collisionLocation == CollisionLocation.BOTTOM:
+
+                self.proxyPosition = np.array([tractor_rect.centerx, fence.bottom + tractor_rect.height/2])
+
+                if tractor_rect.centerx < fence.left or tractor_rect.centerx > fence.right or tractor_rect.top > fence.bottom:
+                    self.collisionStatus = CollisionStatus.UNHANDLED_FREE_SPACE
+
+            elif self.collisionLocation == CollisionLocation.LEFT:
+
+                self.proxyPosition = np.array([fence.left - tractor_rect.width/2, tractor_rect.centery])
+                
+                if tractor_rect.centery < fence.top or tractor_rect.centery > fence.bottom or tractor_rect.right < fence.left:
+                    self.collisionStatus = CollisionStatus.UNHANDLED_FREE_SPACE
+
+            elif self.collisionLocation == CollisionLocation.RIGHT:
+
+                self.proxyPosition = np.array([fence.right + tractor_rect.width/2, tractor_rect.centery])
+
+                if tractor_rect.centery < fence.top or tractor_rect.centery > fence.bottom or tractor_rect.left > fence.right:
+                    self.collisionStatus = CollisionStatus.UNHANDLED_FREE_SPACE
                     
-                elif self.collisionLocation == CollisionLocation.RIGHT:
-                    proxyPosition = np.array([fence.right - tractor_rect.width/2, tractor_rect.centery])
-
-           
         elif self.collisionStatus == CollisionStatus.UNHANDLED_FREE_SPACE:
+            self.proxyPosition = tractorPosition
             self.collisionLocation = CollisionLocation.NONE
             self.collisionStatus = CollisionStatus.FREE_SPACE
 
-        inCollision = self.collisionStatus == CollisionStatus.COLLISION
-    
+        verticalCollision = self.collisionLocation in [CollisionLocation.TOP, CollisionLocation.BOTTOM]
+        horizontalCollision = self.collisionLocation in [CollisionLocation.LEFT, CollisionLocation.RIGHT]
+
         # Compute collision force
-        if inCollision:
-            distance_from_proxy = (proxyPosition - tractorPosition)
+        if verticalCollision or horizontalCollision:
+            distance_from_proxy = (self.proxyPosition - tractorPosition)
             f_collision = -kc*distance_from_proxy
         else:
             f_collision = np.array([0.0, 0.0])
         
-        return f_collision, inCollision, proxyPosition
+        return f_collision, verticalCollision, horizontalCollision, self.proxyPosition

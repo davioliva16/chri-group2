@@ -49,19 +49,17 @@ class PA3():
 
         f_tomatoes = forces.get_all_tomato_forces(game.tomatoes, xh, strength=0.1, sigma=50)
         
-        f_collision, inCollision, proxyPosition = ff.handle_fences(
-            tractor_rect=game.tractor.rect, 
+        f_collision, verticalCollision, horizontalCollision, proxyPosition = ff.handle_fences(
+            tractor_rect=game.tractor.rect,
+            xh=xh,
             fences=game.fences, 
             kc=0.1
         )
 
-        fe = f_tomatoes + f_damp + f_collision
+        fe = f_damp + f_collision + f_tomatoes
 
         #Update last values
-        if inCollision:
-            self.xh_last_frame = proxyPosition
-        else:
-            self.xh_last_frame = xh
+        self.xh_last_frame = xh
 
         # Keyups
         for key in keyups:
@@ -83,11 +81,16 @@ class PA3():
             pA0,pB0,pA,pB,pE = p.derive_device_pos(pos_phys) #derive the pantograph joint positions given some endpoint position
             pA0,pB0,pA,pB,xh = g.convert_pos(pA0,pB0,pA,pB,pE) #convert the physical positions to screen coordinates
 
-        if inCollision:
-            self.game.update_from_device(proxyPosition)
-        else:
-            self.game.update_from_device(xh)
 
+        
+        if verticalCollision:
+            self.game.update_tractor_pos_from_device(pos=xh, pos_virtual=np.array([xh[0], proxyPosition[1]]))
+        elif horizontalCollision:
+            self.game.update_tractor_pos_from_device(pos=xh, pos_virtual=np.array([proxyPosition[0], xh[1]]))
+        else:
+            self.game.update_tractor_pos_from_device(pos = xh)
+        
+        
         self.update_game()
 
         g.render(pA0,pB0,pA,pB,xh,fe,xm)
