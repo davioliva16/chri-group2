@@ -88,7 +88,6 @@ class fence_forces():
                 )
     
         if self.collisionStatus == CollisionStatus.FREE_SPACE:
-            print("in freespace!")
             self.proxyPosition = tractorPosition
 
             #Check for collision and set unhandled collision state
@@ -97,7 +96,6 @@ class fence_forces():
                 self.collisionStatus = CollisionStatus.UNHANDLED_COLLISION
 
         elif self.collisionStatus == CollisionStatus.UNHANDLED_COLLISION:
-            print("in unhandled collision!")
             self.proxyPosition = tractorPosition
             
             if not colliding_fences:
@@ -121,7 +119,6 @@ class fence_forces():
         
         elif self.collisionStatus == CollisionStatus.COLLISION:
             #Check if we have exited collision and set unhandled free space state
-            print("in collision!")
             if not colliding_fences:
                 fence = self.lastFenceInfo
             else:
@@ -156,7 +153,6 @@ class fence_forces():
                     self.collisionStatus = CollisionStatus.UNHANDLED_FREE_SPACE
                     
         elif self.collisionStatus == CollisionStatus.UNHANDLED_FREE_SPACE:
-            print("in unhandled free space!")
             self.proxyPosition = tractorPosition
             self.collisionLocation = CollisionLocation.NONE
             self.collisionStatus = CollisionStatus.FREE_SPACE
