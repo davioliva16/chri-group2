@@ -130,7 +130,7 @@ class Game:
                 
         self.tomatoes = self.generate_tomatoes()
         self.fences = self.generate_fences()
-        self.time_left = 60        # starting time in seconds
+        self.time_left = 30       # starting time in seconds
         self.total_time = 0
         self.last_time_update = pygame.time.get_ticks()
         self.fences = self.generate_fences()
@@ -159,7 +159,7 @@ class Game:
             base_y = self.row2_center
             phase = self.row2_phase
 
-        y = base_y + 12 * math.sin(0.02 * x + phase) + random.randint(-4, 4)
+        y = base_y + 36 * math.sin(0.02 * x + phase) + random.randint(-4, 4)
         return int(y)
 
 
@@ -167,7 +167,7 @@ class Game:
     def generate_tomatoes(self):
         tomatoes = []
 
-        min_spacing = 120 # 70 and speed 2 too much
+        min_spacing = 150 # 70 and speed 2 too much
 
         for row_id in [1, 2]:
             last_x = 80
@@ -191,10 +191,10 @@ class Game:
                 tomato.collected = True
                 if tomato.tomato_type == "ripe":
                     self.reward += 1
-                    self.time_left += 5
+                    self.time_left += 1
                 else:
                     self.penalty += 1
-                    self.time_left -= 5
+                    self.time_left -= 3
     
                 if self.time_left < 0:
                     self.time_left = 0

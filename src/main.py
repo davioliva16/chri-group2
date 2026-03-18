@@ -13,10 +13,12 @@ from PIL import Image
 
 class PA3():
     def __init__(self):
-        self.physics = Physics(hardware_version=3) #setup physics class. Returns a boolean indicating if a device is connected
+        self.physics = Physics(hardware_version=2) #setup physics class. Returns a boolean indicating if a device is connected
         self.device_connected = self.physics.is_device_connected() #returns True if a connected haply device was found
         self.graphics = Graphics(self.device_connected) #setup class for drawing and graphics.
         self.game = Game()
+        self.game_over = "assets/yourefired.png"
+        self.fence = forces.fence_forces()
         #  - Pass along if a device is connected so that the graphics class knows if it needs to simulate the pantograph
         ##############################################
         #ADD things here that you want to run at the start of the program!
@@ -46,11 +48,16 @@ class PA3():
 
         g.erase_screen()
 
-        f_damp = forces.get_damping_force(xh, self.xh_last_frame, damping_coefficient=0.1)
+        if Settings.ATTRACTION_STRENGTH == 'STRONG':
+            attraction_strength = 0.125
+        else:
+            attraction_strength = 0.075
+
+        f_damp = forces.get_damping_force(xh, self.xh_last_frame, damping_coefficient=0.01)
 
         if Settings.TOMATO_ATTRACTION:
             f_tomatoes = forces.get_all_tomato_forces(
-                game.tomatoes, xh, strength=0.1, 
+                game.tomatoes, xh, strength=attraction_strength, 
                 sigma=50, 
                 repel_rotten=Settings.ROTTEN_TOMATO_REPULSION
             )
@@ -64,6 +71,9 @@ class PA3():
             kc=0.1
         )
 
+        if not Settings.FENCE_FORCES:
+            f_collision = np.array([0.0, 0.0])
+
         fe = f_damp + f_collision + f_tomatoes
 
         #Update last values
@@ -71,6 +81,8 @@ class PA3():
         
         if game.time_left == 0:
            path = self.game_over
+           print(f"Your final time is: {game.total_time}s")
+           print(f"Your final score is: {game.reward} ripe tomatoes and {game.penalty} rotten tomatoes collected")
            img = Image.open(path)
            img.show()
 
