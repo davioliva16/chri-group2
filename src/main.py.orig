@@ -6,9 +6,12 @@ from Physics import Physics
 from game.game import Game
 import forces.forces as forces
 import sys
-import game.settings as Settings
+<<<<<<< HEAD
 from PIL import Image
 
+=======
+import game.settings as Settings
+>>>>>>> main
 
 
 class PA3():
@@ -17,6 +20,11 @@ class PA3():
         self.device_connected = self.physics.is_device_connected() #returns True if a connected haply device was found
         self.graphics = Graphics(self.device_connected) #setup class for drawing and graphics.
         self.game = Game()
+<<<<<<< HEAD
+        self.game_over = "assets/yourfired.png"
+=======
+        self.fence = forces.fence_forces()
+>>>>>>> main
         #  - Pass along if a device is connected so that the graphics class knows if it needs to simulate the pantograph
         ##############################################
         #ADD things here that you want to run at the start of the program!
