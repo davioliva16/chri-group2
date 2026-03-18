@@ -49,7 +49,7 @@ def get_all_tomato_forces(tomatoes, xh, strength, sigma, repel_rotten=False):
 
 def get_damping_force(xh, xh_last_frame, damping_coefficient):
     """Calculate the damping force based on velocity."""
-    velocity = xh - xh_last_frame
+    velocity = np.asarray(xh) - np.asarray(xh_last_frame)
     return -damping_coefficient * velocity
 
 class CollisionLocation(Enum):
@@ -81,11 +81,13 @@ class fence_forces():
         colliding_fences = [f for f in fences if tractor_rect.colliderect(f)]
 
         if len(colliding_fences)>1:
+            ''''
             print("""
                 Multiple collisions detected! This probably should not happen, 
                 but if it does, the code will just pick the first fence for 
                 collision response."""
                 )
+            '''
     
         if self.collisionStatus == CollisionStatus.FREE_SPACE:
             self.proxyPosition = tractorPosition
