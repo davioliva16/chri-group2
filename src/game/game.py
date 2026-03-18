@@ -96,6 +96,7 @@ class Game:
         self.tomatoes = self.generate_tomatoes()
         self.fences = self.generate_fences()
         self.time_left = 60        # starting time in seconds
+        self.total_time = 0
         self.last_time_update = pygame.time.get_ticks()
 
     # Update position of tractor given the input of the mouse or haptic device
@@ -199,7 +200,8 @@ class Game:
         font = pygame.font.Font(None, 30)
         
         score = self.reward - self.penalty
-        text = font.render(f"Reward: {self.reward}  Penalty: {self.penalty}  Score: {score} Time: {int(self.time_left)}", True, (255, 255, 255))
+        
+        text = font.render(f"Reward: {self.reward}  Penalty: {self.penalty}  Score: {score} Time left: {int(self.time_left)} Time:{int(self.total_time)}", True, (255, 255, 255))
         screenVR.blit(text, (20, 20)) # Write the text
         font = pygame.font.Font(None, 36)
         
@@ -255,8 +257,9 @@ class Game:
     
         if elapsed_ms >= 1000:  # 1 second passed
             self.time_left -= 1
+            self.total_time += 1
             self.last_time_update = now
-    
+           
             if self.time_left < 0:
                 self.time_left = 0
                 
