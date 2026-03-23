@@ -81,7 +81,7 @@ class PA3():
         
         if game.time_left == 0:
            
-           print("Game Over!")
+           print("\nGame Over!\n")
            game.print_stats()
            path = self.game_over
 

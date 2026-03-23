@@ -1,6 +1,9 @@
 import pygame
 import random
 import math
+import csv
+import os
+from datetime import datetime
 
 from streamlit import image
 
@@ -18,7 +21,7 @@ class Tractor:
 
         # Image
         self.image = pygame.image.load(image_path).convert_alpha()
-        scale = 0.5
+        scale = 2
         original_w = self.image.get_width()
         original_h = self.image.get_height()
         new_size = (int(original_w * scale), int(original_h * scale))
@@ -135,11 +138,50 @@ class Game:
 
         self.scroll_speed = 1
 
+        # HUD flash feedback: list of {text, color, target ('score'|'time'), start_time}
+        self.hud_flashes = []
+        self.flash_duration = 1.0  # seconds
+
+        # Hidden stat: upper vs lower screen time
+        self.frames_upper = 0
+        self.frames_lower = 0
+
         # Crops (x, y, width, height) - screenVR 600x400
         self.field = pygame.Rect(50, 80, 500, 250) # draw in screenVR
         self.crop1 = pygame.Rect(0, 10, 600, 180)
-        self.crop2 = pygame.Rect(0, 210, 600, 180)   
-        self.brown = (139, 69, 19)
+        self.crop2 = pygame.Rect(0, 210, 600, 180)
+
+        # Scrolling mosaic background - farmland (brown crop rows)
+        bg_tile = pygame.image.load("assets/farmland.png").convert()
+        bg_scale = 2  # scale up the small tile
+        self.bg_tile = pygame.transform.smoothscale(
+            bg_tile,
+            (int(bg_tile.get_width() * bg_scale), int(bg_tile.get_height() * bg_scale))
+        )
+        self.bg_tile_w = self.bg_tile.get_width()
+        self.bg_tile_h = self.bg_tile.get_height()
+        self.bg_scroll_offset = 0
+
+        # HUD icons
+        hud_icon_size = 28
+        self.hud_fresh = pygame.transform.smoothscale(
+            pygame.image.load("assets/fresh.png").convert_alpha(), (hud_icon_size, hud_icon_size))
+        self.hud_ripe = pygame.transform.smoothscale(
+            pygame.image.load("assets/ripe.png").convert_alpha(), (hud_icon_size, hud_icon_size))
+        self.hud_rotten = pygame.transform.smoothscale(
+            pygame.image.load("assets/rotten.png").convert_alpha(), (hud_icon_size, hud_icon_size))
+        self.hud_clock = pygame.transform.smoothscale(
+            pygame.image.load("assets/clock.png").convert_alpha(), (hud_icon_size, hud_icon_size))
+
+        # Scrolling mosaic background - grass (green areas)
+        grass_tile = pygame.image.load("assets/grass.png").convert()
+        grass_scale = 2  # scale up the small tile
+        self.grass_tile = pygame.transform.smoothscale(
+            grass_tile,
+            (int(grass_tile.get_width() * grass_scale), int(grass_tile.get_height() * grass_scale))
+        )
+        self.grass_tile_w = self.grass_tile.get_width()
+        self.grass_tile_h = self.grass_tile.get_height()
         
         self.row1_center = self.crop1.centery
         self.row2_center = self.crop2.centery
@@ -217,12 +259,17 @@ class Game:
             # If the tomato collected is red is okay if not a penalty is introduced
             if tomato.check_collision_tomato_tractor(self.tractor):
                 tomato.collected = True
+                now = time.time()
                 if tomato.tomato_type == "ripe":
                     self.reward += 1
                     self.time_left += 1
+                    self.hud_flashes.append({"text": "+1", "color": (0, 255, 0), "target": "score", "start": now})
+                    self.hud_flashes.append({"text": "+1s", "color": (0, 255, 0), "target": "time", "start": now})
                 else:
                     self.penalty += 1
                     self.time_left -= 3
+                    self.hud_flashes.append({"text": "-1", "color": (255, 50, 50), "target": "score", "start": now})
+                    self.hud_flashes.append({"text": "-3s", "color": (255, 50, 50), "target": "time", "start": now})
     
                 if self.time_left < 0:
                     self.time_left = 0
@@ -255,15 +302,29 @@ class Game:
             if fence.right < 0:
                 rightmost = max(f.right for f in self.fences)
                 fence.x = rightmost + random.randint(200, 400)
+
+        # Scroll the background mosaic
+        self.bg_scroll_offset += self.scroll_speed
                 
     # Draw the environment on the screenVR from graphics.py
     def draw_world(self, screenVR):
         # Field: 5 rows, 2 of them with tomatoes
-        screenVR.fill((80, 170, 80))
+        # Tile grass.png across the entire screen as the green background
+        screen_w, screen_h = screenVR.get_size()
+        start_x = -(self.bg_scroll_offset % self.grass_tile_w)
+        for tx in range(int(start_x), screen_w, self.grass_tile_w):
+            for ty in range(0, screen_h, self.grass_tile_h):
+                screenVR.blit(self.grass_tile, (tx, ty))
 
-        # Draw
-        pygame.draw.rect(screenVR, self.brown, self.crop1)
-        pygame.draw.rect(screenVR, self.brown, self.crop2)
+        # Draw scrolling mosaic background for each crop row (farmland on top)
+        for crop_rect in [self.crop1, self.crop2]:
+            # Create a clipping region so tiles don't overflow the crop area
+            screenVR.set_clip(crop_rect)
+            start_x = crop_rect.x - (self.bg_scroll_offset % self.bg_tile_w)
+            for tx in range(int(start_x), crop_rect.right, self.bg_tile_w):
+                for ty in range(crop_rect.y, crop_rect.bottom, self.bg_tile_h):
+                    screenVR.blit(self.bg_tile, (tx, ty))
+            screenVR.set_clip(None)  # reset clipping
         
         #Draw the fences
         for fence in self.fences:
@@ -283,14 +344,48 @@ class Game:
         for tomato in self.tomatoes:
             tomato.draw(screenVR)
         
-        # Draw the score achieved
+        # Draw HUD
         font = pygame.font.Font(None, 30)
-        
         score = self.reward - self.penalty
-        
-        text = font.render(f"Reward: {self.reward}  Penalty: {self.penalty}  Score: {score} Time left: {int(self.time_left)}", True, (255, 255, 255))
-        screenVR.blit(text, (20, 20)) # Write the text
-        font = pygame.font.Font(None, 36)
+        hud_y = 8
+        icon_size = self.hud_fresh.get_height()
+
+        # Left side: score icon + score number
+        if score > 10:
+            score_icon = self.hud_fresh
+        elif score >= 0:
+            score_icon = self.hud_ripe
+        else:
+            score_icon = self.hud_rotten
+
+        screenVR.blit(score_icon, (10, hud_y))
+        score_text = font.render(f"Score: {score}", True, (255, 255, 255))
+        screenVR.blit(score_text, (10 + icon_size + 6, hud_y + (icon_size - score_text.get_height()) // 2))
+
+        # Right side: clock icon + time left
+        time_text = font.render(f"Time Left: {int(self.time_left)}s", True, (255, 255, 255))
+        screen_w = screenVR.get_width()
+        time_x = screen_w - time_text.get_width() - 10
+        clock_x = time_x - icon_size - 6
+        screenVR.blit(self.hud_clock, (clock_x, hud_y))
+        screenVR.blit(time_text, (time_x, hud_y + (icon_size - time_text.get_height()) // 2))
+
+        # Draw flash feedback
+        now = time.time()
+        flash_font = pygame.font.Font(None, 26)
+        self.hud_flashes = [f for f in self.hud_flashes if now - f["start"] < self.flash_duration]
+        for flash in self.hud_flashes:
+            elapsed = now - flash["start"]
+            alpha = max(0, int(255 * (1.0 - elapsed / self.flash_duration)))
+            flash_surf = flash_font.render(flash["text"], True, flash["color"])
+            flash_surf.set_alpha(alpha)
+            # Float upward over time
+            float_y = hud_y + icon_size + 2 - int(elapsed * 15)
+            if flash["target"] == "score":
+                flash_x = 10 + icon_size + 6 + score_text.get_width() + 6
+            else:
+                flash_x = clock_x - flash_surf.get_width() - 4
+            screenVR.blit(flash_surf, (flash_x, float_y))
 
     
         
@@ -300,6 +395,13 @@ class Game:
         self.scroll_world()
         self.check_tomatoes_interactions()
         self.update_timer()
+
+        # Track upper vs lower screen position
+        screen_mid_y = 200  # screenVR is 600x400
+        if self.tractor.y < screen_mid_y:
+            self.frames_upper += 1
+        else:
+            self.frames_lower += 1
 
 
     # Draw fences
@@ -373,7 +475,7 @@ class Game:
         self.fence_h = fh
     
         # Fence vertical position (between crop1 and crop2)
-        fence_y = (self.crop1.bottom + self.crop2.top) // 2
+        fence_y = (self.crop1.bottom + self.crop2.top) // 2 - self.fence_h//2 + 10
         
         # Horizontal limits of the environment
         left_limit = self.field.left
@@ -393,6 +495,13 @@ class Game:
         return fences
     
     def print_stats(self):
+        total_frames = self.frames_upper + self.frames_lower
+        if total_frames > 0:
+            upper_pct = 100.0 * self.frames_upper / total_frames
+            lower_pct = 100.0 * self.frames_lower / total_frames
+        else:
+            upper_pct = lower_pct = 0.0
+
         print(f"""
         Reward: {self.reward}
         Penalty: {self.penalty} 
@@ -401,5 +510,28 @@ class Game:
         Score: {self.reward - self.penalty} 
         Time left: {int(self.time_left)} 
         Total time: {int(self.total_time)}
+        Upper screen: {upper_pct:.1f}%
+        Lower screen: {lower_pct:.1f}%
         """)
-    
+
+        # Append stats to CSV
+        csv_path = "results/scores.csv"
+        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+        file_exists = os.path.isfile(csv_path) and os.path.getsize(csv_path) > 0
+        with open(csv_path, "a", newline="") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(["timestamp", "reward", "penalty", "max_possible_reward",
+                                 "max_possible_penalty", "score", "total_time",
+                                 "upper_screen_pct", "lower_screen_pct"])
+            writer.writerow([
+                datetime.now().isoformat(),
+                self.reward,
+                self.penalty,
+                self.max_possible_reward,
+                self.max_possible_penalty,
+                self.reward - self.penalty,
+                int(self.total_time),
+                round(upper_pct, 1),
+                round(lower_pct, 1)
+            ])
