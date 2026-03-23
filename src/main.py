@@ -80,9 +80,11 @@ class PA3():
         self.xh_last_frame = xh
         
         if game.time_left == 0:
+           
+           print("Game Over!")
+           game.print_stats()
            path = self.game_over
-           print(f"Your final time is: {game.total_time}s")
-           print(f"Your final score is: {game.reward} ripe tomatoes and {game.penalty} rotten tomatoes collected")
+
            img = Image.open(path)
            img.show()
 

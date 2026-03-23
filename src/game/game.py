@@ -2,6 +2,8 @@ import pygame
 import random
 import math
 
+from streamlit import image
+
 from game.settings import DEBUG_RENDER
 import time
 
@@ -106,6 +108,20 @@ class Tomato:
         distance = math.sqrt(dx**2 + dy**2)
         # Collision if distance is less than sum of radii
         return distance < (self.radius + tractor.radius)
+    
+    def reload_image(self):
+        if self.tomato_type == "ripe":
+            image_path = "assets/tomato.png"
+        else:
+            image_path = "assets/rotten_tomato.png"
+
+        image = pygame.image.load(image_path).convert_alpha()
+        scale = 0.1
+        original_w = image.get_width()
+        original_h = image.get_height()
+        new_size = (int(original_w * scale), int(original_h * scale))
+        self.image = pygame.transform.smoothscale(image, new_size)
+
 
 class Game:
     def __init__(self):
@@ -114,7 +130,10 @@ class Game:
         self.reward = 0
         self.penalty = 0
 
-        self.scroll_speed = 1.5
+        self.max_possible_reward = 0
+        self.max_possible_penalty = 0
+
+        self.scroll_speed = 1
 
         # Crops (x, y, width, height) - screenVR 600x400
         self.field = pygame.Rect(50, 80, 500, 250) # draw in screenVR
@@ -134,6 +153,13 @@ class Game:
         self.total_time = 0
         self.last_time_update = pygame.time.get_ticks()
         self.fences = self.generate_fences()
+
+        #init max possible reward/penalty
+        for tomato in self.tomatoes:
+            if tomato.tomato_type == "ripe":
+                self.max_possible_reward += 1
+            else:
+                self.max_possible_penalty += 1
 
     # Update position of tractor given the input of the mouse or haptic device
     def update_tractor_pos_from_device(self, pos, pos_virtual=None):
@@ -176,6 +202,8 @@ class Game:
                 y = self.get_row_y(x, row_id)
                 tomato_type = random.choice(["ripe", "rotten"])
                 tomatoes.append(Tomato(x, y, tomato_type, row_id))
+
+
                 last_x = x  
                      
         return tomatoes
@@ -211,6 +239,14 @@ class Game:
                 tomato.tomato_type = random.choice(["ripe", "rotten"])
                 tomato.collected = False
 
+                tomato.reload_image()
+
+                #Add to the max possible reward/penalty
+                if tomato.tomato_type == "ripe":
+                    self.max_possible_reward += 1
+                else:
+                    self.max_possible_penalty += 1
+
             tomato.rect.center = (tomato.x, tomato.y)
     
         for fence in self.fences:
@@ -218,15 +254,7 @@ class Game:
         
             if fence.right < 0:
                 rightmost = max(f.right for f in self.fences)
-                fence.x = rightmost + random.randint(50, 200)
-                
-        for fence in self.fences:
-              
-            fence.x -= self.scroll_speed
-
-            if fence.right < 0:
-                rightmost = max(f.right for f in self.fences)
-                fence.x = rightmost + random.randint(50, 200)
+                fence.x = rightmost + random.randint(200, 400)
                 
     # Draw the environment on the screenVR from graphics.py
     def draw_world(self, screenVR):
@@ -260,9 +288,11 @@ class Game:
         
         score = self.reward - self.penalty
         
-        text = font.render(f"Reward: {self.reward}  Penalty: {self.penalty}  Score: {score} Time left: {int(self.time_left)} Time:{int(self.total_time)}", True, (255, 255, 255))
+        text = font.render(f"Reward: {self.reward}  Penalty: {self.penalty}  Score: {score} Time left: {int(self.time_left)}", True, (255, 255, 255))
         screenVR.blit(text, (20, 20)) # Write the text
         font = pygame.font.Font(None, 36)
+
+    
         
     
     # Update scrolling and tomatoes
@@ -360,6 +390,16 @@ class Game:
             else:
                 x +=20
 
-
-    
         return fences
+    
+    def print_stats(self):
+        print(f"""
+        Reward: {self.reward}
+        Penalty: {self.penalty} 
+        Max possible reward: {self.max_possible_reward}
+        Max possible penalty: {self.max_possible_penalty}
+        Score: {self.reward - self.penalty} 
+        Time left: {int(self.time_left)} 
+        Total time: {int(self.total_time)}
+        """)
+    
