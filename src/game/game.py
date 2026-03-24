@@ -7,7 +7,7 @@ from datetime import datetime
 
 from streamlit import image
 
-from game.settings import DEBUG_RENDER
+from game.settings import DEBUG_RENDER, FENCE_FORCES, TOMATO_ATTRACTION, ROTTEN_TOMATO_REPULSION, ATTRACTION_STRENGTH
 import time
 
 class Tractor: 
@@ -262,9 +262,9 @@ class Game:
                 now = time.time()
                 if tomato.tomato_type == "ripe":
                     self.reward += 1
-                    self.time_left += 1
+                    self.time_left += 0.75
                     self.hud_flashes.append({"text": "+1", "color": (0, 255, 0), "target": "score", "start": now})
-                    self.hud_flashes.append({"text": "+1s", "color": (0, 255, 0), "target": "time", "start": now})
+                    self.hud_flashes.append({"text": "+0.75s", "color": (0, 255, 0), "target": "time", "start": now})
                 else:
                     self.penalty += 1
                     self.time_left -= 3
@@ -514,8 +514,15 @@ class Game:
         Lower screen: {lower_pct:.1f}%
         """)
 
-        # Append stats to CSV
-        csv_path = "results/scores.csv"
+        # Append stats to CSV (filename based on settings)
+        fence_str = "fenceOn" if FENCE_FORCES else "fenceOff"
+        if TOMATO_ATTRACTION:
+            attract_str = f"attraction{ATTRACTION_STRENGTH.capitalize()}"
+        else:
+            attract_str = "attractionNone"
+        repulsion_str = "repulsionOn" if ROTTEN_TOMATO_REPULSION else "repulsionOff"
+        csv_filename = f"results_{fence_str}_{attract_str}_{repulsion_str}.csv"
+        csv_path = os.path.join("results", csv_filename)
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
         file_exists = os.path.isfile(csv_path) and os.path.getsize(csv_path) > 0
         with open(csv_path, "a", newline="") as f:
