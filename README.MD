@@ -20,3 +20,22 @@ Develop the haptic interaction between the user and the environment. Implement f
 ## Evaluation
 
 The performance of the system will be evaluated using metrics such as number of collected items, navigation accuracy, collisions with obstacles, and task completion time. These metrics will help analyze the effect of haptic feedback on user performance and interaction quality.
+
+## Running the Code
+
+```bash
+cd src
+python3 main.py
+```
+
+## Configuration
+
+Settings can be modified in [src/game/settings.py](src/game/settings.py):
+
+| Setting | Default | Description |
+|---|---|---|
+| `FENCE_FORCES` | `True` | Enable/disable haptic force feedback at field boundaries |
+| `TOMATO_ATTRACTION` | `True` | Enable/disable attraction force toward ripe tomatoes |
+| `ROTTEN_TOMATO_REPULSION` | `True` | Enable/disable repulsion force from rotten tomatoes (requires `TOMATO_ATTRACTION = True`) |
+| `ATTRACTION_STRENGTH` | `'WEAK'` | Strength of tomato attraction force — `'WEAK'` or `'STRONG'` |
+| `DEBUG_RENDER` | `False` | Enable/disable debug visualization overlay |

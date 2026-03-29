@@ -60,7 +60,14 @@ class Tractor:
     
     def draw(self, screenVR):
         if DEBUG_RENDER:
-            pygame.draw.rect(screenVR, (0, 220, 30), self.rect) # Draw the collision rect (for debugging)
+            # Draw semi-transparent truck image at collision rect position
+            debug_img = self.image.copy()
+            debug_img.set_alpha(80)
+            screenVR.blit(debug_img, self.rect)
+            # Draw semi-transparent green collision rect outline
+            overlay = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
+            overlay.fill((0, 220, 30, 60))
+            screenVR.blit(overlay, self.rect.topleft)
         screenVR.blit(self.image, self.virtual_rect) # Draw the iamge in the position of the virtual rectangle
 
 
@@ -333,8 +340,10 @@ class Game:
         #Draw the fences
         for fence in self.fences:
             if DEBUG_RENDER:
-                pygame.draw.rect(screenVR, (220, 30, 30), fence)
-            
+                overlay = pygame.Surface((fence.width, fence.height), pygame.SRCALPHA)
+                overlay.fill((220, 30, 30, 60))
+                screenVR.blit(overlay, fence.topleft)
+
             screenVR.blit(self.fence_image, fence)
 
         # Draw the tractor
